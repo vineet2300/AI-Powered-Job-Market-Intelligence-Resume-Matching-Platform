@@ -1,0 +1,66 @@
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Python
+# =========================
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# =========================
+# Frontend / Node
+# =========================
+node_modules/
+frontend/node_modules/
+
+dist/
+frontend/dist/
+dist-ssr/
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =========================
+# Local files
+# =========================
+*.local
+
+# =========================
+# VS Code / IDE
+# =========================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Other editor files
+# =========================
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# Uploaded resumes
+backend/uploads/
