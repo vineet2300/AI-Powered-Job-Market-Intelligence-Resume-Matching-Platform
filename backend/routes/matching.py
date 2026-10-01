@@ -8,8 +8,6 @@ from fastapi import (
 from sqlalchemy import text
 
 import fitz
-import tempfile
-import os
 
 from backend.database import engine
 from backend.services.matcher import (
@@ -27,19 +25,17 @@ router = APIRouter(
 # EXTRACT PDF TEXT
 # =========================================================
 
-def extract_pdf_text(file_path):
+def extract_pdf_text(pdf_bytes: bytes):
 
     document = fitz.open(
-        file_path
+        stream=pdf_bytes,
+        filetype="pdf"
     )
 
     resume_text = ""
 
     for page in document:
-
-        resume_text += (
-            page.get_text()
-        )
+        resume_text += page.get_text()
 
     document.close()
 
@@ -55,7 +51,6 @@ async def find_best_jobs(
     file: UploadFile = File(...),
     limit: int = 10
 ):
-
 
     # -----------------------------------------------------
     # VALIDATE FILE
@@ -81,30 +76,19 @@ async def find_best_jobs(
         )
 
 
-    temp_path = None
-
-
     try:
 
         # -------------------------------------------------
-        # TEMPORARILY SAVE RESUME
+        # READ PDF DIRECTLY INTO MEMORY
         # -------------------------------------------------
 
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=".pdf"
-        ) as temp_file:
+        file_content = await file.read()
 
-            file_content = (
-                await file.read()
-            )
+        if not file_content:
 
-            temp_file.write(
-                file_content
-            )
-
-            temp_path = (
-                temp_file.name
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded PDF is empty"
             )
 
 
@@ -112,10 +96,8 @@ async def find_best_jobs(
         # EXTRACT RESUME TEXT
         # -------------------------------------------------
 
-        resume_text = (
-            extract_pdf_text(
-                temp_path
-            )
+        resume_text = extract_pdf_text(
+            file_content
         )
 
 
@@ -164,12 +146,10 @@ async def find_best_jobs(
 
         for job in jobs:
 
-            match = (
-                match_resume_with_job(
-                    resume_text,
-                    job["description"] or "",
-                    job["title"] or ""
-                )
+            match = match_resume_with_job(
+                resume_text,
+                job["description"] or "",
+                job["title"] or ""
             )
 
 
@@ -272,14 +252,6 @@ async def find_best_jobs(
         # -------------------------------------------------
         # RANK JOBS
         # -------------------------------------------------
-        #
-        # Priority:
-        #
-        # 1. Higher compatibility
-        # 2. More matched skills
-        # 3. More detected job skills
-        #
-        # -------------------------------------------------
 
         results.sort(
 
@@ -320,20 +292,13 @@ async def find_best_jobs(
         }
 
 
-    # =====================================================
-    # DELETE TEMPORARY RESUME
-    # =====================================================
+    except HTTPException:
+        raise
 
-    finally:
 
-        if (
-            temp_path
-            and
-            os.path.exists(
-                temp_path
-            )
-        ):
+    except Exception as error:
 
-            os.remove(
-                temp_path
-            )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to match resume: {str(error)}"
+        )

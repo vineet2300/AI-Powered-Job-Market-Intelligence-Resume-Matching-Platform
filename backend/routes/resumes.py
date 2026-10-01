@@ -1,8 +1,5 @@
-from backend.skills import extract_skills
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from backend.services.skill_extractor import extract_skills
-from pathlib import Path
-import shutil
 import fitz
 
 
@@ -12,12 +9,11 @@ router = APIRouter(
 )
 
 
-UPLOAD_DIR = Path("backend/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-
-def extract_text_from_pdf(file_path):
-    document = fitz.open(file_path)
+def extract_text_from_pdf(pdf_bytes: bytes):
+    document = fitz.open(
+        stream=pdf_bytes,
+        filetype="pdf"
+    )
 
     text = ""
 
@@ -38,19 +34,38 @@ async def upload_resume(file: UploadFile = File(...)):
             detail="Only PDF resumes are allowed"
         )
 
-    file_path = UPLOAD_DIR / file.filename
+    try:
+        pdf_bytes = await file.read()
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        if not pdf_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded PDF is empty"
+            )
 
-    resume_text = extract_text_from_pdf(file_path)
-    resume_skills = extract_skills(resume_text)
+        resume_text = extract_text_from_pdf(pdf_bytes)
 
-    skills = extract_skills(resume_text)
+        if not resume_text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Could not extract text from this PDF"
+            )
 
-    return {
-    "message": "Resume uploaded and analyzed successfully",
-    "filename": file.filename,
-    "extracted_text": resume_text,
-    "extracted_skills": resume_skills
-}
+        resume_skills = extract_skills(resume_text)
+
+        return {
+            "message": "Resume uploaded and analyzed successfully",
+            "filename": file.filename,
+            "extracted_text": resume_text,
+            "extracted_skills": resume_skills
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process resume: {str(error)}"
+        )
+    

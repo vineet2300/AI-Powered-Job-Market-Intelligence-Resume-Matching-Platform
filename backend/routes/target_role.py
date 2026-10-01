@@ -1,8 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from sqlalchemy import text
 from collections import Counter
-import tempfile
-import os
 import fitz
 
 from backend.database import engine
@@ -15,8 +13,16 @@ router = APIRouter(
 )
 
 
-def extract_pdf_text(file_path):
-    document = fitz.open(file_path)
+# =========================================================
+# EXTRACT PDF TEXT
+# =========================================================
+
+def extract_pdf_text(pdf_bytes: bytes):
+
+    document = fitz.open(
+        stream=pdf_bytes,
+        filetype="pdf"
+    )
 
     resume_text = ""
 
@@ -28,46 +34,89 @@ def extract_pdf_text(file_path):
     return resume_text
 
 
+# =========================================================
+# TARGET ROLE ANALYSIS
+# =========================================================
+
 @router.post("/analyze")
 async def analyze_target_role(
     role: str = Form(...),
     file: UploadFile = File(...)
 ):
 
+    # -----------------------------------------------------
+    # VALIDATE PDF
+    # -----------------------------------------------------
+
     if file.content_type != "application/pdf":
+
         raise HTTPException(
             status_code=400,
             detail="Only PDF resumes are allowed"
         )
 
+
+    # -----------------------------------------------------
+    # VALIDATE ROLE
+    # -----------------------------------------------------
+
     role = role.strip().lower()
 
-    temp_path = None
+    if not role:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Target role is required"
+        )
+
 
     try:
 
-        # Save resume temporarily
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=".pdf"
-        ) as temp_file:
+        # -------------------------------------------------
+        # READ PDF DIRECTLY INTO MEMORY
+        # -------------------------------------------------
 
-            temp_file.write(await file.read())
-            temp_path = temp_file.name
+        file_content = await file.read()
 
-        resume_text = extract_pdf_text(temp_path)
+        if not file_content:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Uploaded PDF is empty"
+            )
+
+
+        # -------------------------------------------------
+        # EXTRACT RESUME TEXT
+        # -------------------------------------------------
+
+        resume_text = extract_pdf_text(
+            file_content
+        )
 
         if not resume_text.strip():
+
             raise HTTPException(
                 status_code=400,
                 detail="Could not extract resume text"
             )
 
+
+        # -------------------------------------------------
+        # EXTRACT RESUME SKILLS
+        # -------------------------------------------------
+
         resume_skills = set(
-            extract_skills(resume_text)
+            extract_skills(
+                resume_text
+            )
         )
 
-        # Get jobs belonging to selected role
+
+        # -------------------------------------------------
+        # GET JOBS BELONGING TO SELECTED ROLE
+        # -------------------------------------------------
+
         with engine.connect() as connection:
 
             jobs = connection.execute(
@@ -82,7 +131,9 @@ async def analyze_target_role(
                 }
             ).fetchall()
 
+
         if not jobs:
+
             raise HTTPException(
                 status_code=404,
                 detail=(
@@ -91,7 +142,11 @@ async def analyze_target_role(
                 )
             )
 
-        # Count skills across job descriptions
+
+        # -------------------------------------------------
+        # COUNT SKILLS ACROSS JOB DESCRIPTIONS
+        # -------------------------------------------------
+
         skill_counter = Counter()
 
         for job in jobs:
@@ -102,9 +157,13 @@ async def analyze_target_role(
                 )
             )
 
-            skill_counter.update(job_skills)
+            skill_counter.update(
+                job_skills
+            )
+
 
         if not skill_counter:
+
             raise HTTPException(
                 status_code=404,
                 detail=(
@@ -113,13 +172,24 @@ async def analyze_target_role(
                 )
             )
 
-        # Top skills observed in current job data
-        top_skills = skill_counter.most_common(10)
+
+        # -------------------------------------------------
+        # TOP SKILLS OBSERVED IN CURRENT JOB DATA
+        # -------------------------------------------------
+
+        top_skills = skill_counter.most_common(
+            10
+        )
 
         target_skills = {
             skill
             for skill, count in top_skills
         }
+
+
+        # -------------------------------------------------
+        # MATCHED / MISSING SKILLS
+        # -------------------------------------------------
 
         matched_skills = (
             resume_skills.intersection(
@@ -133,12 +203,21 @@ async def analyze_target_role(
             )
         )
 
+
+        # -------------------------------------------------
+        # CURRENT FIT
+        # -------------------------------------------------
+
         fit_percentage = (
             len(matched_skills)
             / len(target_skills)
         ) * 100
 
-        # Add frequency information
+
+        # -------------------------------------------------
+        # MARKET SKILL FREQUENCY
+        # -------------------------------------------------
+
         market_skills = []
 
         total_jobs = len(jobs)
@@ -154,21 +233,32 @@ async def analyze_target_role(
                 )
             })
 
+
+        # -------------------------------------------------
+        # RESPONSE
+        # -------------------------------------------------
+
         return {
             "target_role": role,
+
             "jobs_analyzed": total_jobs,
+
             "current_fit_percentage": round(
                 fit_percentage,
                 2
             ),
+
             "matched_skills": sorted(
                 matched_skills
             ),
+
             "missing_skills": sorted(
                 missing_skills
             ),
+
             "important_market_skills":
                 market_skills,
+
             "recommendation": (
                 "Focus on the missing skills that "
                 "appear frequently in current job "
@@ -179,7 +269,17 @@ async def analyze_target_role(
             )
         }
 
-    finally:
 
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
+    except HTTPException:
+        raise
+
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Failed to analyze target role: "
+                f"{str(error)}"
+            )
+        )
