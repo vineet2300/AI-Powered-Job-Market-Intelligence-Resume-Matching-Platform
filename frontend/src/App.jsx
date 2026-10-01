@@ -72,7 +72,7 @@ const [selectedJobDetails, setSelectedJobDetails] = useState(null);
     const fetchAnalytics = async () => {
       try {
         const response = await fetch(
-          "http://127.0.0.1:8000/analytics/overview"
+          "/api/analytics/overview"
         );
 
         if (!response.ok) {
@@ -97,7 +97,7 @@ const [selectedJobDetails, setSelectedJobDetails] = useState(null);
     const fetchJobs = async () => {
       try {
         const response = await fetch(
-          "http://127.0.0.1:8000/jobs/"
+          "/api/jobs/"
         );
 
         if (!response.ok) {
@@ -233,7 +233,7 @@ const [selectedJobDetails, setSelectedJobDetails] = useState(null);
       formData.append("file", resumeFile);
 
       const response = await fetch(
-        "http://127.0.0.1:8000/matching/best-jobs?limit=5",
+        "/api/matching/best-jobs?limit=5",
         {
           method: "POST",
           body: formData,
@@ -288,7 +288,7 @@ const [selectedJobDetails, setSelectedJobDetails] = useState(null);
       formData.append("file", targetResumeFile);
 
       const response = await fetch(
-        "http://127.0.0.1:8000/target-role/analyze",
+        "/api/target-role/analyze",
         {
           method: "POST",
           body: formData,
@@ -370,7 +370,7 @@ const handlePostJob = async (event) => {
 
   try {
     const response = await fetch(
-      "http://127.0.0.1:8000/jobs/",
+      "/api/jobs/",
       {
         method: "POST",
 
@@ -416,7 +416,7 @@ const handlePostJob = async (event) => {
 
     /* Refresh jobs */
     const jobsResponse = await fetch(
-      "http://127.0.0.1:8000/jobs/"
+      "/api/jobs/"
     );
 
     if (jobsResponse.ok) {
@@ -426,7 +426,7 @@ const handlePostJob = async (event) => {
 
     /* Refresh analytics */
     const analyticsResponse = await fetch(
-      "http://127.0.0.1:8000/analytics/overview"
+      "/api/analytics/overview"
     );
 
     if (analyticsResponse.ok) {
