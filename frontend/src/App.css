@@ -87,6 +87,8 @@ button:focus-visible {
 
   letter-spacing: -7px;
 
+  color: #000000
+
   text-shadow:
     0 0 20px rgba(0, 0, 0, 0.13),
     0 0 45px rgba(0, 0, 0, 0.06);
@@ -951,7 +953,7 @@ footer {
 .jobs-heading p {
   margin-bottom: 18px;
 
-  color: #999999;
+  color: #000000;
 
   font-size: 10px;
   letter-spacing: 3px;
@@ -962,10 +964,12 @@ footer {
 
   font-weight: 500;
   letter-spacing: -3px;
+
+  color: #000000;
 }
 
 .jobs-heading > span {
-  color: #888888;
+  color: #000000;
 
   font-size: 12px;
 }
