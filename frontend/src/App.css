@@ -87,7 +87,7 @@ button:focus-visible {
 
   letter-spacing: -7px;
 
-  color: #000000
+  color: #000000;
 
   text-shadow:
     0 0 20px rgba(0, 0, 0, 0.13),
@@ -3657,4 +3657,19 @@ participate in the job-row grid.
     width: 42px;
     height: 42px;
   }
+}
+/* ================================= */
+/* FORCE MAIN HEADINGS BLACK */
+/* ================================= */
+
+.hero h1,
+.jobs-heading h2,
+.market-summary h2,
+.section-header h2,
+.sections h3,
+.target-section h2,
+.recruiter-section h2,
+.analytics-header h2,
+.resume-match-header h2 {
+  color: #000000 !important;
 }
