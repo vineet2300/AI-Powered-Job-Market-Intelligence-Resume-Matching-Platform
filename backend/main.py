@@ -37,8 +37,9 @@ def home():
     }
 
 
-app.include_router(jobs_router)
-app.include_router(resumes_router)
-app.include_router(matching_router)
-app.include_router(target_role_router)
-app.include_router(analytics_router)
+
+app.include_router(jobs_router, prefix="/api")
+app.include_router(resumes_router, prefix="/api")
+app.include_router(matching_router, prefix="/api")
+app.include_router(target_role_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
